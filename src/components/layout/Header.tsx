@@ -160,17 +160,28 @@ export function Header() {
             </SheetContent>
           </Sheet>
 
-          {/* Logo Central */}
+          {/* Logo Central - Animada */}
           <Link href="/" className="flex items-center justify-center flex-1">
-            <motion.div whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 400 }}>
-              <Image
-                src="/logo_ops_new_hz.svg"
-                alt="OPS News"
-                width={180}
-                height={50}
-                className="h-9 md:h-11 w-auto"
-                priority
-              />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              whileHover={{ scale: 1.03 }}
+              className="relative"
+            >
+              {/* Logo com efeito shimmer */}
+              <div className="relative overflow-hidden">
+                <Image
+                  src="/logo_ops_new_hz.svg"
+                  alt="OPS News"
+                  width={180}
+                  height={50}
+                  className="h-9 md:h-11 w-auto"
+                  priority
+                />
+                {/* Shimmer overlay */}
+                <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              </div>
             </motion.div>
           </Link>
 
