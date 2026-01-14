@@ -23,6 +23,18 @@ export interface Article {
   published_at: string | null
   created_at: string
   updated_at: string
+  // Campos adicionais para features avançadas
+  urgente?: boolean
+  ao_vivo?: boolean
+  exclusivo?: boolean
+  trending?: boolean
+  resumo_bullets?: string[]
+  contexto_historico?: string
+  fontes_verificadas?: { nome: string; url: string }[]
+  audio_url?: string
+  tags?: string[]
+  meta_titulo?: string
+  meta_descricao?: string
 }
 
 export interface Database {

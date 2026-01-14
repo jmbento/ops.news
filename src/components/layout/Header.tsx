@@ -1,55 +1,84 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Menu, X, Search, Moon, Sun } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Menu, Search, Moon, Sun, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { categories } from '@/lib/constants'
+import { categories, COLORS } from '@/lib/constants'
 
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
   const { theme, setTheme } = useTheme()
 
+  // Detectar scroll para mudar estilo do header
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+    <header
+      className={`sticky top-10 z-50 w-full transition-all duration-300 ${
+        isScrolled
+          ? 'bg-background/98 shadow-lg backdrop-blur-md'
+          : 'bg-background border-b'
+      }`}
+    >
       <div className="container mx-auto px-4">
-        {/* Top bar */}
+        {/* Main Header */}
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 group">
-            <span className="text-2xl font-black tracking-tight transition-transform group-hover:scale-105">
-              <span className="text-[#FF0000]">OPS</span>
-              <span className="text-foreground">.news</span>
-            </span>
+            <motion.span
+              className="text-2xl md:text-3xl font-black tracking-tight"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: 'spring', stiffness: 400 }}
+            >
+              <span style={{ color: COLORS.primary.red }}>OPS</span>
+              <span className="text-foreground">.NEWS</span>
+            </motion.span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center">
             {categories.map((category) => (
               <Link
                 key={category.slug}
                 href={`/${category.slug}`}
-                className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+                className="relative px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
               >
                 {category.name}
+                {/* Underline animado na cor da categoria */}
+                <span
+                  className="absolute bottom-0 left-3 right-3 h-0.5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"
+                  style={{ backgroundColor: category.color }}
+                />
               </Link>
             ))}
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* Search Toggle */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="hidden md:flex"
               aria-label="Buscar"
             >
-              <Search className="h-5 w-5" />
+              {isSearchOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Search className="h-5 w-5" />
+              )}
             </Button>
 
             {/* Theme Toggle */}
@@ -71,64 +100,78 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col gap-4 mt-8">
-                  <Link
-                    href="/busca"
-                    className="flex items-center gap-2 text-lg font-medium"
-                  >
-                    <Search className="h-5 w-5" />
-                    Buscar
-                  </Link>
-                  <div className="h-px bg-border my-2" />
-                  {categories.map((category) => (
-                    <Link
-                      key={category.slug}
-                      href={`/${category.slug}`}
-                      className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {category.name}
+                <div className="flex flex-col gap-6 mt-8">
+                  {/* Mobile Search */}
+                  <form action="/busca" method="GET">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="q"
+                        placeholder="Buscar notícias..."
+                        className="pl-10"
+                      />
+                    </div>
+                  </form>
+
+                  <div className="h-px bg-border" />
+
+                  {/* Mobile Categories */}
+                  <nav className="flex flex-col gap-2">
+                    {categories.map((category) => (
+                      <Link
+                        key={category.slug}
+                        href={`/${category.slug}`}
+                        className="flex items-center gap-3 text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: category.color }}
+                        />
+                        {category.name}
+                      </Link>
+                    ))}
+                  </nav>
+
+                  <div className="h-px bg-border" />
+
+                  {/* Mobile Links */}
+                  <div className="flex flex-col gap-2">
+                    <Link href="/sobre" className="text-muted-foreground hover:text-foreground py-2">
+                      Sobre
                     </Link>
-                  ))}
-                  <div className="h-px bg-border my-2" />
-                  <Link
-                    href="/sobre"
-                    className="text-lg font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    Sobre
-                  </Link>
-                  <Link
-                    href="/contato"
-                    className="text-lg font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    Contato
-                  </Link>
-                </nav>
+                    <Link href="/contato" className="text-muted-foreground hover:text-foreground py-2">
+                      Contato
+                    </Link>
+                  </div>
+                </div>
               </SheetContent>
             </Sheet>
           </div>
         </div>
 
-        {/* Search Bar (expandable) */}
-        {isSearchOpen && (
-          <div className="pb-4 animate-fade-in">
-            <form action="/busca" method="GET" className="relative">
-              <Input
-                name="q"
-                placeholder="Buscar notícias..."
-                className="pr-10"
-                autoFocus
-              />
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
-          </div>
-        )}
+        {/* Search Bar Expandable */}
+        <AnimatePresence>
+          {isSearchOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <form action="/busca" method="GET" className="pb-4">
+                <div className="relative max-w-2xl mx-auto">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    name="q"
+                    placeholder="Buscar notícias, temas, categorias..."
+                    className="pl-12 h-12 text-lg"
+                    autoFocus
+                  />
+                </div>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </header>
   )

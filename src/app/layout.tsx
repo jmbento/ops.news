@@ -3,6 +3,7 @@ import { Inter, Roboto } from 'next/font/google'
 import './globals.css'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { BreakingNewsBar } from '@/components/layout/BreakingNewsBar'
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { siteConfig } from '@/lib/constants'
@@ -22,7 +23,7 @@ const roboto = Roboto({
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
+    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
     { media: '(prefers-color-scheme: dark)', color: '#0A0A0A' },
   ],
   width: 'device-width',
@@ -33,14 +34,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: siteConfig.name,
+    default: `${siteConfig.name} - Notícias do Brasil e do Mundo`,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
-  keywords: ['notícias', 'brasil', 'política', 'economia', 'esportes', 'tecnologia', 'entretenimento', 'mundo'],
-  authors: [{ name: 'OPS News', url: siteConfig.url }],
-  creator: 'OPS News',
-  publisher: 'OPS News',
+  keywords: siteConfig.keywords,
+  authors: [{ name: siteConfig.name, url: siteConfig.url }],
+  creator: siteConfig.creator,
+  publisher: siteConfig.name,
   formatDetection: {
     email: false,
     address: false,
@@ -102,12 +103,16 @@ export default function RootLayout({
       <body className={`${inter.variable} ${roboto.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
           <GoogleAnalytics />
-          <div className="relative min-h-screen flex flex-col">
+          
+          {/* Breaking News Bar */}
+          <BreakingNewsBar />
+          
+          <div className="relative min-h-screen flex flex-col pt-10">
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
