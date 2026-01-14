@@ -1,0 +1,258 @@
+{
+  "name": "Ops.news - Geração Automática de Áudio",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute",
+              "minute": 15
+            }
+          ]
+        }
+      },
+      "name": "Trigger a cada 15 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, titulo, conteudo, categoria_id FROM noticias WHERE publicado = true AND audio_resumo_url IS NULL ORDER BY data_publicacao DESC LIMIT 5"
+      },
+      "name": "Buscar Notícias sem Áudio",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contents",
+              "value": "={{ [{\"parts\": [{\"text\": \"Você é locutor profissional de jornalismo brasileiro.\\n\\nNOTÍCIA:\\nTítulo: \" + $json.titulo + \"\\nConteúdo: \" + $json.conteudo + \"\\n\\nTAREFA: Crie 2 versões para narração:\\n\\n1. VERSÃO RESUMO (1-2min):\\n- Apenas 3 pontos principais\\n- Formato: 'Ops News. [Categoria]. [Título]. Primeiro, [ponto 1]. Segundo, [ponto 2]. Terceiro, [ponto 3]. Essa foi a notícia.'\\n\\n2. VERSÃO COMPLETA (5-8min):\\n- Artigo integral adaptado\\n- Formato: 'Ops News. [Categoria]. [Título]. [Conteúdo adaptado]. Essa foi a notícia completa.'\\n\\nREGRAS:\\n- Números por extenso\\n- Siglas explicadas\\n- Tom neutro jornalístico\\n\\nRETORNE JSON:\\n{\\n  \\\"resumo\\\": \\\"texto da versão resumo\\\",\\n  \\\"completa\\\": \\\"texto da versão completa\\\"\\n}\"}]}] }}"
+            }
+          ]
+        }
+      },
+      "name": "Gemini - Criar Scripts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = JSON.parse($input.item.json.candidates[0].content.parts[0].text);\nreturn {\n  noticia_id: $input.item.json.id,\n  titulo: $input.item.json.titulo,\n  script_resumo: response.resumo,\n  script_completo: response.completa\n};"
+      },
+      "name": "Processar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{$credentials.elevenlabs_api_key}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.script_resumo}}"
+            },
+            {
+              "name": "voice_settings",
+              "value": "={{JSON.stringify({stability: 0.5, similarity_boost: 0.75})}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "ElevenLabs - Áudio Resumo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{$credentials.elevenlabs_api_key}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.script_completo}}"
+            },
+            {
+              "name": "voice_settings",
+              "value": "={{JSON.stringify({stability: 0.5, similarity_boost: 0.75})}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "ElevenLabs - Áudio Completo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucket": "audios",
+        "fileName": "resumo/{{$json.noticia_id}}.mp3",
+        "binaryData": true
+      },
+      "name": "Upload Resumo Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucket": "audios",
+        "fileName": "completo/{{$json.noticia_id}}.mp3",
+        "binaryData": true
+      },
+      "name": "Upload Completo Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "noticias",
+        "filterType": "manual",
+        "matchingColumns": "id",
+        "matchingColumnsValues": "={{$json.noticia_id}}",
+        "columnsUi": {
+          "columnValues": [
+            {
+              "column": "audio_resumo_url",
+              "value": "={{$json.publicUrl}}"
+            },
+            {
+              "column": "audio_resumo_duracao",
+              "value": "={{$json.duration}}"
+            },
+            {
+              "column": "audio_gerado_em",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "name": "Atualizar Notícia (Resumo)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "noticias",
+        "filterType": "manual",
+        "matchingColumns": "id",
+        "matchingColumnsValues": "={{$json.noticia_id}}",
+        "columnsUi": {
+          "columnValues": [
+            {
+              "column": "audio_completo_url",
+              "value": "={{$json.publicUrl}}"
+            },
+            {
+              "column": "audio_completo_duracao",
+              "value": "={{$json.duration}}"
+            }
+          ]
+        }
+      },
+      "name": "Atualizar Notícia (Completo)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Trigger a cada 15 min": {
+      "main": [[{"node": "Buscar Notícias sem Áudio", "type": "main", "index": 0}]]
+    },
+    "Buscar Notícias sem Áudio": {
+      "main": [[{"node": "Gemini - Criar Scripts", "type": "main", "index": 0}]]
+    },
+    "Gemini - Criar Scripts": {
+      "main": [[{"node": "Processar Resposta", "type": "main", "index": 0}]]
+    },
+    "Processar Resposta": {
+      "main": [
+        [
+          {"node": "ElevenLabs - Áudio Resumo", "type": "main", "index": 0},
+          {"node": "ElevenLabs - Áudio Completo", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "ElevenLabs - Áudio Resumo": {
+      "main": [[{"node": "Upload Resumo Supabase", "type": "main", "index": 0}]]
+    },
+    "ElevenLabs - Áudio Completo": {
+      "main": [[{"node": "Upload Completo Supabase", "type": "main", "index": 0}]]
+    },
+    "Upload Resumo Supabase": {
+      "main": [[{"node": "Atualizar Notícia (Resumo)", "type": "main", "index": 0}]]
+    },
+    "Upload Completo Supabase": {
+      "main": [[{"node": "Atualizar Notícia (Completo)", "type": "main", "index": 0}]]
+    }
+  }
+}
