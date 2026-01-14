@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { PlaylistButtons } from './PlaylistButtons'
-import { LogoAnimatedLoop } from '@/components/brand/LogoAnimatedLoop'
 import { categories, siteConfig } from '@/lib/constants'
 
 export function Header() {
@@ -82,7 +81,7 @@ export function Header() {
 
               <Separator />
 
-              {/* Categorias - Estilo Metrópoles/Globo */}
+              {/* Categorias */}
               <nav className="py-2">
                 <Link
                   href="/"
@@ -148,7 +147,7 @@ export function Header() {
                 </div>
               </div>
 
-              {/* Login (placeholder) */}
+              {/* Login */}
               <Separator />
               <div className="p-6">
                 <Button variant="outline" className="w-full" asChild>
@@ -161,14 +160,16 @@ export function Header() {
             </SheetContent>
           </Sheet>
 
-          {/* Logo Central - Animada em Loop */}
+          {/* Logo Central - Estática */}
           <Link href="/" className="flex items-center justify-center flex-1">
-            <motion.div 
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: 'spring', stiffness: 400 }}
-            >
-              <LogoAnimatedLoop />
-            </motion.div>
+            <Image
+              src="/logo_ops_new_hz.svg"
+              alt="OPS News"
+              width={180}
+              height={50}
+              className="h-9 md:h-11 w-auto"
+              priority
+            />
           </Link>
 
           {/* Actions */}
