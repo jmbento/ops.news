@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { PlaylistButtons } from './PlaylistButtons'
-import { categories, COLORS } from '@/lib/constants'
+import { categories } from '@/lib/constants'
 
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -47,10 +47,13 @@ export function Header() {
               <SheetHeader className="p-6 pb-4">
                 <SheetTitle className="flex items-center gap-2">
                   <Link href="/" className="flex items-center">
-                    <span className="text-2xl font-black tracking-tight">
-                      <span style={{ color: COLORS.primary.red }}>OPS</span>
-                      <span className="text-foreground">.NEWS</span>
-                    </span>
+                    <Image
+                      src="/logo_ops_new_hz.svg"
+                      alt="OPS News"
+                      width={140}
+                      height={40}
+                      className="h-10 w-auto"
+                    />
                   </Link>
                 </SheetTitle>
               </SheetHeader>
@@ -125,10 +128,14 @@ export function Header() {
           {/* Logo Central */}
           <Link href="/" className="flex items-center justify-center flex-1">
             <motion.div whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 400 }}>
-              <span className="text-2xl md:text-3xl font-black tracking-tight">
-                <span style={{ color: COLORS.primary.red }}>OPS</span>
-                <span className="text-foreground">.NEWS</span>
-              </span>
+              <Image
+                src="/logo_ops_new_hz.svg"
+                alt="OPS News"
+                width={180}
+                height={50}
+                className="h-9 md:h-11 w-auto"
+                priority
+              />
             </motion.div>
           </Link>
 
