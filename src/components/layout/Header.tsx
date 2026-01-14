@@ -39,8 +39,8 @@ export function Header() {
           {/* Menu Hamburger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Menu">
-                <Menu className="h-6 w-6" />
+              <Button variant="ghost" size="icon" className="h-12 w-12" aria-label="Menu">
+                <Menu className="h-7 w-7" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[320px] sm:w-[380px] p-0 overflow-y-auto">

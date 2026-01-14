@@ -3,11 +3,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { format, formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Clock, Eye, Flame, AlertTriangle, Radio } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { COLORS } from '@/lib/constants'
 import type { Article } from '@/types/database'
@@ -39,11 +38,11 @@ export function NewsCard({
 
   // Animation variants
   const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 },
     visible: { 
       opacity: 1, 
       y: 0,
-      transition: { delay: index * 0.1, duration: 0.4 }
+      transition: { delay: index * 0.05, duration: 0.3 }
     }
   }
 
@@ -57,7 +56,7 @@ export function NewsCard({
         viewport={{ once: true }}
       >
         <Link href={`/${categorySlug}/${article.slug}`}>
-          <div className="group flex items-start gap-3 py-3 border-b last:border-0 hover:bg-muted/50 -mx-2 px-2 rounded transition-colors">
+          <div className="group flex items-start gap-3 py-3 border-b last:border-0 hover:bg-muted/50 -mx-2 px-2 transition-colors">
             <span className="text-2xl font-black text-muted-foreground/30 group-hover:text-primary transition-colors">
               {String(index + 1).padStart(2, '0')}
             </span>
@@ -77,7 +76,7 @@ export function NewsCard({
     )
   }
 
-  // Horizontal variant
+  // Horizontal variant - Estilo Metrópoles
   if (variant === 'horizontal') {
     return (
       <motion.div
@@ -85,112 +84,99 @@ export function NewsCard({
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true }}
-        whileHover={{ y: -4 }}
-        transition={{ type: 'spring', stiffness: 300 }}
       >
         <Link href={`/${categorySlug}/${article.slug}`}>
-          <Card className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all">
-            <CardContent className="p-0 flex gap-4">
-              {/* Image */}
-              <div className="relative w-40 md:w-56 h-32 md:h-40 shrink-0 overflow-hidden">
-                <Image
-                  src={article.cover_image || '/images/placeholder.jpg'}
-                  alt={article.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                {/* Badges */}
-                <div className="absolute top-2 left-2 flex flex-col gap-1">
-                  <Badge style={{ backgroundColor: categoryColor }} className="text-xs">
-                    {categoryName}
+          <article className="group flex gap-4 py-4 border-b hover:bg-muted/30 transition-colors">
+            {/* Image - Sem cantos arredondados */}
+            <div className="relative w-36 md:w-48 h-24 md:h-32 shrink-0 overflow-hidden">
+              <Image
+                src={article.cover_image || '/images/placeholder.jpg'}
+                alt={article.title}
+                fill
+                className="object-cover group-hover:scale-102 transition-transform duration-300"
+              />
+              {/* Category Badge */}
+              <div className="absolute top-0 left-0">
+                <Badge 
+                  style={{ backgroundColor: categoryColor }} 
+                  className="text-[10px] font-bold rounded-none px-2 py-0.5 uppercase"
+                >
+                  {categoryName}
+                </Badge>
+              </div>
+              {urgente && (
+                <div className="absolute top-0 right-0">
+                  <Badge className="bg-red-600 text-white text-[10px] rounded-none animate-pulse">
+                    URGENTE
                   </Badge>
-                  {urgente && (
-                    <Badge className="bg-red-600 text-white text-xs animate-pulse">
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      URGENTE
-                    </Badge>
-                  )}
-                  {aoVivo && (
-                    <Badge className="bg-red-500 text-white text-xs">
-                      <Radio className="h-3 w-3 mr-1 animate-pulse" />
-                      AO VIVO
-                    </Badge>
-                  )}
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Content */}
-              <div className="flex flex-col justify-center py-3 pr-4 flex-1">
-                <h3 className="font-bold text-base md:text-lg line-clamp-2 group-hover:text-primary transition-colors mb-2">
-                  {article.title}
-                </h3>
-                {article.excerpt && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3 hidden md:block">
-                    {article.excerpt}
-                  </p>
-                )}
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {/* Content */}
+            <div className="flex flex-col justify-center flex-1 min-w-0">
+              <h3 className="font-bold text-base md:text-lg line-clamp-2 group-hover:text-primary group-hover:underline decoration-1 underline-offset-2 transition-colors mb-2">
+                {article.title}
+              </h3>
+              {article.excerpt && (
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-2 hidden md:block">
+                  {article.excerpt}
+                </p>
+              )}
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {relativeTime}
+                </span>
+                {article.views > 0 && (
                   <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {relativeTime}
+                    <Eye className="h-3 w-3" />
+                    {article.views.toLocaleString('pt-BR')}
                   </span>
-                  {article.views > 0 && (
-                    <span className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      {article.views.toLocaleString('pt-BR')}
-                    </span>
-                  )}
-                  {trending && (
-                    <span className="flex items-center gap-1 text-orange-500">
-                      <Flame className="h-3 w-3" />
-                      Trending
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </article>
         </Link>
       </motion.div>
     )
   }
 
-  // Vertical variant (default)
+  // Vertical variant (default) - Estilo Metrópoles
   return (
     <motion.div
       variants={cardVariants}
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true }}
-      whileHover={{ y: -4 }}
-      transition={{ type: 'spring', stiffness: 300 }}
     >
       <Link href={`/${categorySlug}/${article.slug}`}>
-        <Card className="group overflow-hidden h-full border-0 shadow-md hover:shadow-xl transition-all">
-          {/* Image */}
-          <div className="relative aspect-video overflow-hidden">
+        <article className="group overflow-hidden bg-background hover:bg-muted/30 transition-colors">
+          {/* Image - Sem cantos arredondados */}
+          <div className="relative aspect-[16/9] overflow-hidden">
             <Image
               src={article.cover_image || '/images/placeholder.jpg'}
               alt={article.title}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              className="object-cover group-hover:scale-102 transition-transform duration-300"
             />
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             
             {/* Badges */}
-            <div className="absolute top-3 left-3 flex flex-col gap-1">
-              <Badge style={{ backgroundColor: categoryColor }}>
+            <div className="absolute top-0 left-0 flex gap-0">
+              <Badge 
+                style={{ backgroundColor: categoryColor }}
+                className="rounded-none text-xs font-bold uppercase px-3 py-1"
+              >
                 {categoryName}
               </Badge>
               {urgente && (
-                <Badge className="bg-red-600 text-white animate-pulse">
+                <Badge className="bg-red-600 text-white rounded-none text-xs font-bold animate-pulse">
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   URGENTE
                 </Badge>
               )}
               {aoVivo && (
-                <Badge className="bg-red-500 text-white">
+                <Badge className="bg-red-500 text-white rounded-none text-xs font-bold">
                   <Radio className="h-3 w-3 mr-1 animate-pulse" />
                   AO VIVO
                 </Badge>
@@ -199,18 +185,18 @@ export function NewsCard({
 
             {/* Trending badge */}
             {trending && (
-              <div className="absolute top-3 right-3">
-                <Badge variant="secondary" className="bg-orange-500 text-white">
+              <div className="absolute top-0 right-0">
+                <Badge className="bg-orange-500 text-white rounded-none text-xs">
                   <Flame className="h-3 w-3 mr-1" />
-                  🔥
+                  EM ALTA
                 </Badge>
               </div>
             )}
           </div>
 
           {/* Content */}
-          <CardContent className="p-4">
-            <h3 className="font-bold text-lg line-clamp-2 group-hover:text-primary transition-colors mb-2">
+          <div className="p-4">
+            <h3 className="font-bold text-base md:text-lg line-clamp-2 group-hover:text-primary group-hover:underline decoration-1 underline-offset-2 transition-colors mb-2">
               {article.title}
             </h3>
             {article.excerpt && (
@@ -230,8 +216,8 @@ export function NewsCard({
                 </span>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </article>
       </Link>
     </motion.div>
   )
@@ -253,11 +239,10 @@ export function NewsCardSkeleton({ variant = 'vertical' }: { variant?: 'vertical
 
   if (variant === 'horizontal') {
     return (
-      <div className="flex gap-4">
-        <Skeleton className="w-40 md:w-56 h-32 md:h-40 rounded-lg" />
-        <div className="flex-1 py-3">
-          <Skeleton className="h-4 w-20 mb-2" />
-          <Skeleton className="h-6 w-full mb-2" />
+      <div className="flex gap-4 py-4 border-b">
+        <Skeleton className="w-36 md:w-48 h-24 md:h-32" />
+        <div className="flex-1 py-2">
+          <Skeleton className="h-5 w-full mb-2" />
           <Skeleton className="h-4 w-3/4 mb-4" />
           <Skeleton className="h-3 w-32" />
         </div>
@@ -266,12 +251,11 @@ export function NewsCardSkeleton({ variant = 'vertical' }: { variant?: 'vertical
   }
 
   return (
-    <div className="rounded-lg overflow-hidden">
-      <Skeleton className="aspect-video w-full" />
+    <div className="overflow-hidden">
+      <Skeleton className="aspect-[16/9] w-full" />
       <div className="p-4">
-        <Skeleton className="h-4 w-20 mb-2" />
-        <Skeleton className="h-6 w-full mb-2" />
-        <Skeleton className="h-4 w-3/4 mb-4" />
+        <Skeleton className="h-5 w-full mb-2" />
+        <Skeleton className="h-4 w-3/4 mb-3" />
         <Skeleton className="h-3 w-32" />
       </div>
     </div>
