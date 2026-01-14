@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/Footer'
 import { BreakingNewsBar } from '@/components/layout/BreakingNewsBar'
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import { SplashWrapper } from '@/components/brand/SplashWrapper'
 import { siteConfig } from '@/lib/constants'
 
 const inter = Inter({ 
@@ -108,16 +109,18 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <GoogleAnalytics />
-          <Toaster position="bottom-right" richColors />
-          
-          <BreakingNewsBar />
-          
-          <div className="relative min-h-screen flex flex-col pt-10">
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
+          <SplashWrapper>
+            <GoogleAnalytics />
+            <Toaster position="bottom-right" richColors />
+            
+            <BreakingNewsBar />
+            
+            <div className="relative min-h-screen flex flex-col pt-10">
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+          </SplashWrapper>
         </ThemeProvider>
       </body>
     </html>
