@@ -5,13 +5,13 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, Search, Moon, Sun, X, ChevronRight } from 'lucide-react'
+import { Menu, Search, Moon, Sun, X, ChevronRight, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { PlaylistButtons } from './PlaylistButtons'
-import { categories } from '@/lib/constants'
+import { categories, siteConfig } from '@/lib/constants'
 
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -43,84 +43,119 @@ export function Header() {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[320px] sm:w-[400px] p-0">
-              <SheetHeader className="p-6 pb-4">
-                <SheetTitle className="flex items-center gap-2">
-                  <Link href="/" className="flex items-center">
-                    <Image
-                      src="/logo_ops_new_hz.svg"
-                      alt="OPS News"
-                      width={140}
-                      height={40}
-                      className="h-10 w-auto"
-                    />
-                  </Link>
-                </SheetTitle>
-              </SheetHeader>
+            <SheetContent side="left" className="w-[320px] sm:w-[380px] p-0 overflow-y-auto">
+              {/* Header do Menu */}
+              <div className="p-6 pb-4">
+                <Link href="/" className="block">
+                  <Image
+                    src="/logo_ops_new_hz.svg"
+                    alt="OPS News"
+                    width={160}
+                    height={45}
+                    className="h-12 w-auto"
+                  />
+                </Link>
+              </div>
               
               <Separator />
-              
-              <div className="flex flex-col p-6">
-                <form action="/busca" method="GET" className="mb-6">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input name="q" placeholder="Buscar notícias..." className="pl-10" />
-                  </div>
-                </form>
 
-                <nav className="flex flex-col gap-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Categorias
-                  </p>
-                  {categories.map((category) => (
-                    <Link
-                      key={category.slug}
-                      href={`/${category.slug}`}
-                      className="flex items-center justify-between py-3 px-3 -mx-3 rounded-lg text-foreground hover:bg-muted transition-colors group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
-                        <span className="font-medium">{category.name}</span>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Link>
-                  ))}
-                </nav>
+              {/* Redes Sociais */}
+              <div className="px-6 py-4 flex items-center gap-4">
+                <a href={siteConfig.links.facebook} target="_blank" rel="noopener noreferrer" 
+                   className="text-foreground hover:text-primary transition-colors">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+                </a>
+                <a href={siteConfig.links.twitter} target="_blank" rel="noopener noreferrer"
+                   className="text-foreground hover:text-primary transition-colors">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                <a href="https://youtube.com/@opsnews" target="_blank" rel="noopener noreferrer"
+                   className="text-foreground hover:text-primary transition-colors">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                </a>
+                <a href={siteConfig.links.instagram} target="_blank" rel="noopener noreferrer"
+                   className="text-foreground hover:text-primary transition-colors">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                </a>
+              </div>
 
-                <Separator className="my-6" />
+              <Separator />
 
-                <nav className="flex flex-col gap-1">
-                  <Link href="/sobre" className="py-3 px-3 -mx-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                    Sobre
+              {/* Categorias - Estilo Metrópoles/Globo */}
+              <nav className="py-2">
+                <Link
+                  href="/"
+                  className="block px-6 py-3 text-[15px] font-medium text-foreground hover:bg-muted hover:text-primary transition-colors"
+                >
+                  ÚLTIMAS NOTÍCIAS
+                </Link>
+                
+                {categories.map((category) => (
+                  <Link
+                    key={category.slug}
+                    href={`/${category.slug}`}
+                    className="flex items-center justify-between px-6 py-3 text-[15px] font-medium text-foreground hover:bg-muted hover:text-primary transition-colors group"
+                  >
+                    <span>{category.name}</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
-                  <Link href="/contato" className="py-3 px-3 -mx-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                    Contato
-                  </Link>
-                </nav>
+                ))}
+              </nav>
 
-                <Separator className="my-6" />
+              <Separator />
 
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm text-muted-foreground">Tema</span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={theme === 'light' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTheme('light')}
-                    >
-                      <Sun className="h-4 w-4 mr-1" />
-                      Claro
-                    </Button>
-                    <Button
-                      variant={theme === 'dark' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTheme('dark')}
-                    >
-                      <Moon className="h-4 w-4 mr-1" />
-                      Escuro
-                    </Button>
-                  </div>
+              {/* Links Institucionais */}
+              <nav className="py-2">
+                <Link
+                  href="/sobre"
+                  className="block px-6 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  Sobre Nós
+                </Link>
+                <Link
+                  href="/contato"
+                  className="block px-6 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  Fale Conosco
+                </Link>
+              </nav>
+
+              <Separator />
+
+              {/* Tema */}
+              <div className="px-6 py-4">
+                <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider">Aparência</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant={theme === 'light' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTheme('light')}
+                    className="flex-1"
+                  >
+                    <Sun className="h-4 w-4 mr-2" />
+                    Claro
+                  </Button>
+                  <Button
+                    variant={theme === 'dark' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTheme('dark')}
+                    className="flex-1"
+                  >
+                    <Moon className="h-4 w-4 mr-2" />
+                    Escuro
+                  </Button>
                 </div>
+              </div>
+
+              {/* Login (placeholder) */}
+              <Separator />
+              <div className="p-6">
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/login">
+                    <User className="h-4 w-4 mr-2" />
+                    Acesse sua conta
+                  </Link>
+                </Button>
               </div>
             </SheetContent>
           </Sheet>
@@ -182,8 +217,8 @@ export function Header() {
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     name="q"
-                    placeholder="Buscar notícias, temas, categorias..."
-                    className="pl-12 h-12 text-lg"
+                    placeholder="Buscar notícias..."
+                    className="pl-12 h-12 text-lg rounded-full border-2"
                     autoFocus
                   />
                 </div>
