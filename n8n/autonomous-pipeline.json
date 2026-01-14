@@ -1,0 +1,400 @@
+{
+  "name": "OPS News - Pipeline Autônomo Completo",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "⏰ A cada 30 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [0, 0],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"sonar\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Você é um jornalista brasileiro. Busque as 5 notícias mais importantes das últimas 2 horas sobre: política brasileira, economia, tecnologia, esportes e mundo. Retorne em JSON com campos: title, category (politica/economia/tecnologia/esportes/mundo/brasil/entretenimento/saude), excerpt (2 frases), content (3-5 parágrafos), source_url. Seja factual e imparcial.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Busque as notícias mais recentes e importantes do Brasil e do mundo agora.\"\n    }\n  ],\n  \"max_tokens\": 4000,\n  \"temperature\": 0.2,\n  \"return_citations\": true\n}"
+      },
+      "id": "perplexity-search",
+      "name": "🔍 Perplexity Sonar",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [220, 0],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "perplexity-auth",
+          "name": "Perplexity API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai notícias do response do Perplexity\nconst response = $input.first().json;\nconst content = response.choices[0].message.content;\n\n// Tenta parsear JSON do conteúdo\nlet articles = [];\ntry {\n  // Busca o JSON no conteúdo\n  const jsonMatch = content.match(/\\[.*\\]/s) || content.match(/\\{.*\\}/s);\n  if (jsonMatch) {\n    const parsed = JSON.parse(jsonMatch[0]);\n    articles = Array.isArray(parsed) ? parsed : [parsed];\n  }\n} catch (e) {\n  // Se não conseguir parsear, cria artigo do texto\n  articles = [{\n    title: 'Notícia do momento',\n    category: 'brasil',\n    excerpt: content.substring(0, 200),\n    content: content,\n    source_url: 'https://perplexity.ai'\n  }];\n}\n\n// Retorna cada artigo como item separado\nreturn articles.map(article => ({\n  json: {\n    ...article,\n    citations: response.citations || []\n  }\n}));"
+      },
+      "id": "parse-articles",
+      "name": "📄 Parsear Artigos",
+      "type": "n8n-nodes-base.code",
+      "position": [440, 0],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Você é o editor-chefe do portal OPS News. Reescreva esta notícia com:\\n\\n1. Título impactante (máx 80 chars)\\n2. Slug SEO-friendly (lowercase, hífens)\\n3. Excerpt atraente (2 frases)\\n4. Conteúdo completo (5-7 parágrafos, tom jornalístico brasileiro)\\n5. TL;DR (3 bullets principais)\\n6. Tags relevantes (5 palavras)\\n\\nNOTÍCIA ORIGINAL:\\nTítulo: {{ $json.title }}\\nCategoria: {{ $json.category }}\\nConteúdo: {{ $json.content }}\\n\\nRetorne APENAS um JSON válido com: title, slug, excerpt, content, tldr (array), tags (array), category\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 2000\n  }\n}"
+      },
+      "id": "gemini-rewrite",
+      "name": "✨ Gemini Reescreve",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [660, 0],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "gemini-auth",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parseia response do Gemini\nconst response = $input.first().json;\nconst originalArticle = $('📄 Parsear Artigos').first().json;\n\nlet article = {};\ntry {\n  const text = response.candidates[0].content.parts[0].text;\n  // Remove markdown code blocks se existir\n  const cleanText = text.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  article = JSON.parse(cleanText);\n} catch (e) {\n  // Fallback para dados originais\n  article = {\n    title: originalArticle.title,\n    slug: originalArticle.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 60),\n    excerpt: originalArticle.excerpt,\n    content: originalArticle.content,\n    tldr: ['Notícia em desenvolvimento'],\n    tags: ['brasil', 'notícias'],\n    category: originalArticle.category\n  };\n}\n\n// Adiciona metadados\narticle.source_urls = originalArticle.citations || [];\narticle.is_published = true;\narticle.is_featured = false;\narticle.author = 'OPS News';\narticle.published_at = new Date().toISOString();\n\nreturn [{ json: article }];"
+      },
+      "id": "parse-gemini",
+      "name": "📝 Formatar Artigo",
+      "type": "n8n-nodes-base.code",
+      "position": [880, 0],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.title }}. {{ $json.excerpt }}. {{ $json.tldr ? $json.tldr.join('. ') : '' }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"pt-BR\",\n    \"name\": \"pt-BR-Neural2-A\",\n    \"ssmlGender\": \"FEMALE\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"speakingRate\": 1.0,\n    \"pitch\": 0\n  }\n}"
+      },
+      "id": "google-tts-summary",
+      "name": "🔊 TTS Resumo",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1100, -100],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "google-tts-auth",
+          "name": "Google Cloud API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {\n    \"text\": \"{{ $json.title }}. {{ $json.content.substring(0, 4000) }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"pt-BR\",\n    \"name\": \"pt-BR-Neural2-A\",\n    \"ssmlGender\": \"FEMALE\"\n  },\n  \"audioConfig\": {\n    \"audioEncoding\": \"MP3\",\n    \"speakingRate\": 1.0,\n    \"pitch\": 0\n  }\n}"
+      },
+      "id": "google-tts-full",
+      "name": "🔊 TTS Completo",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1100, 100],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "google-tts-auth",
+          "name": "Google Cloud API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combina artigo com áudios\nconst article = $('📝 Formatar Artigo').first().json;\nconst audioSummary = $('🔊 TTS Resumo').first().json;\nconst audioFull = $('🔊 TTS Completo').first().json;\n\n// Gera nomes únicos para os arquivos\nconst timestamp = Date.now();\nconst slug = article.slug || 'article';\n\nreturn [{\n  json: {\n    ...article,\n    audio_summary_base64: audioSummary.audioContent,\n    audio_full_base64: audioFull.audioContent,\n    audio_summary_filename: `${slug}-resumo-${timestamp}.mp3`,\n    audio_full_filename: `${slug}-completo-${timestamp}.mp3`\n  }\n}];"
+      },
+      "id": "merge-audio",
+      "name": "🔗 Juntar Áudios",
+      "type": "n8n-nodes-base.code",
+      "position": [1320, 0],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/audios/{{ $json.audio_summary_filename }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "audio/mpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "body": "={{ Buffer.from($json.audio_summary_base64, 'base64') }}"
+      },
+      "id": "upload-summary",
+      "name": "⬆️ Upload Resumo",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1540, -100],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/audios/{{ $json.audio_full_filename }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "audio/mpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "raw",
+        "body": "={{ Buffer.from($json.audio_full_base64, 'base64') }}"
+      },
+      "id": "upload-full",
+      "name": "⬆️ Upload Completo",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1540, 100],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/articles",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": \"{{ $json.title }}\",\n  \"slug\": \"{{ $json.slug }}\",\n  \"excerpt\": \"{{ $json.excerpt }}\",\n  \"content\": {{ JSON.stringify($json.content) }},\n  \"category_id\": null,\n  \"author\": \"{{ $json.author }}\",\n  \"cover_image\": null,\n  \"is_featured\": {{ $json.is_featured }},\n  \"is_published\": {{ $json.is_published }},\n  \"published_at\": \"{{ $json.published_at }}\",\n  \"tldr\": {{ JSON.stringify($json.tldr) }},\n  \"tags\": {{ JSON.stringify($json.tags) }},\n  \"source_urls\": {{ JSON.stringify($json.source_urls) }},\n  \"audio_summary_url\": \"{{ $env.SUPABASE_URL }}/storage/v1/object/public/audios/{{ $json.audio_summary_filename }}\",\n  \"audio_full_url\": \"{{ $env.SUPABASE_URL }}/storage/v1/object/public/audios/{{ $json.audio_full_filename }}\"\n}"
+      },
+      "id": "insert-article",
+      "name": "💾 Salvar no Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1760, 0],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Service Key"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "success",
+      "name": "✅ Sucesso!",
+      "type": "n8n-nodes-base.noOp",
+      "position": [1980, 0],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "⏰ A cada 30 min": {
+      "main": [
+        [
+          {
+            "node": "🔍 Perplexity Sonar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Perplexity Sonar": {
+      "main": [
+        [
+          {
+            "node": "📄 Parsear Artigos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📄 Parsear Artigos": {
+      "main": [
+        [
+          {
+            "node": "✨ Gemini Reescreve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✨ Gemini Reescreve": {
+      "main": [
+        [
+          {
+            "node": "📝 Formatar Artigo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Formatar Artigo": {
+      "main": [
+        [
+          {
+            "node": "🔊 TTS Resumo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔊 TTS Completo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔊 TTS Resumo": {
+      "main": [
+        [
+          {
+            "node": "🔗 Juntar Áudios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔊 TTS Completo": {
+      "main": [
+        [
+          {
+            "node": "🔗 Juntar Áudios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Juntar Áudios": {
+      "main": [
+        [
+          {
+            "node": "⬆️ Upload Resumo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "⬆️ Upload Completo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⬆️ Upload Resumo": {
+      "main": [
+        [
+          {
+            "node": "💾 Salvar no Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⬆️ Upload Completo": {
+      "main": [
+        [
+          {
+            "node": "💾 Salvar no Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Salvar no Supabase": {
+      "main": [
+        [
+          {
+            "node": "✅ Sucesso!",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "OPS News",
+      "createdAt": "2024-01-14T00:00:00.000Z",
+      "updatedAt": "2024-01-14T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "pinData": {}
+}
