@@ -1,28 +1,31 @@
+// Cores da marca OPS News
 export const COLORS = {
   primary: {
-    red: '#FF0000',
-    blue: '#0066FF',
+    red: '#C73E3A',      // Vermelho OPS
+    blue: '#2E3B8E',     // Azul NEWS
   },
   neutral: {
     dark: '#1A1A1A',
     gray: '#666666',
+    grayLight: '#999999',
     light: '#F5F5F5',
     white: '#FFFFFF',
   },
+  // Categorias com tons neutros + vermelho/azul da marca
   categories: {
-    politica: '#FF0000',
-    economia: '#00AA00',
-    tecnologia: '#0066FF',
-    entretenimento: '#FF00FF',
-    esportes: '#FFA500',
-    brasil: '#009C3B',
-    mundo: '#003399',
-    saude: '#00CED1',
+    politica: '#C73E3A',      // Vermelho OPS (destaque)
+    economia: '#444444',      // Cinza escuro
+    tecnologia: '#2E3B8E',    // Azul NEWS (destaque)
+    entretenimento: '#666666', // Cinza médio
+    esportes: '#555555',       // Cinza
+    brasil: '#C73E3A',         // Vermelho OPS
+    mundo: '#2E3B8E',          // Azul NEWS
+    saude: '#777777',          // Cinza claro
   },
   status: {
-    urgente: '#FF0000',
-    exclusivo: '#FFD700',
-    aoVivo: '#FF4500',
+    urgente: '#C73E3A',   // Vermelho OPS
+    exclusivo: '#2E3B8E', // Azul NEWS
+    aoVivo: '#C73E3A',    // Vermelho OPS
   }
 } as const
 

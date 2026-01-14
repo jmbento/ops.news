@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { PlaylistButtons } from './PlaylistButtons'
+import { LogoAnimatedLoop } from '@/components/brand/LogoAnimatedLoop'
 import { categories, siteConfig } from '@/lib/constants'
 
 export function Header() {
@@ -160,28 +161,13 @@ export function Header() {
             </SheetContent>
           </Sheet>
 
-          {/* Logo Central - Animada */}
+          {/* Logo Central - Animada em Loop */}
           <Link href="/" className="flex items-center justify-center flex-1">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
               whileHover={{ scale: 1.03 }}
-              className="relative"
+              transition={{ type: 'spring', stiffness: 400 }}
             >
-              {/* Logo com efeito shimmer */}
-              <div className="relative overflow-hidden">
-                <Image
-                  src="/logo_ops_new_hz.svg"
-                  alt="OPS News"
-                  width={180}
-                  height={50}
-                  className="h-9 md:h-11 w-auto"
-                  priority
-                />
-                {/* Shimmer overlay */}
-                <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-              </div>
+              <LogoAnimatedLoop />
             </motion.div>
           </Link>
 
