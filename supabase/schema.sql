@@ -1,16 +1,17 @@
--- ================================================
--- OPS.news Database Schema
--- Supabase PostgreSQL
--- ================================================
+-- ============================================
+-- OPS.NEWS - DUAL PLAYLIST SYSTEM
+-- Sistema de Ler Depois + Ouvir Depois
+-- Data: 14/01/2026
+-- ============================================
 
--- Enable UUID extension
+-- Habilitar extensões necessárias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ================================================
--- CATEGORIES TABLE
--- ================================================
+-- ============================================
+-- TABELA: categories (Categorias)
+-- ============================================
 CREATE TABLE IF NOT EXISTS categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     description TEXT,
@@ -19,29 +20,44 @@ CREATE TABLE IF NOT EXISTS categories (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ================================================
--- ARTICLES TABLE
--- ================================================
+-- ============================================
+-- TABELA: articles (Notícias)
+-- ============================================
 CREATE TABLE IF NOT EXISTS articles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4 (),
-    title TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    excerpt TEXT,
-    content TEXT NOT NULL,
-    cover_image TEXT,
-    category_id UUID REFERENCES categories (id) ON DELETE SET NULL,
-    author TEXT NOT NULL,
-    is_featured BOOLEAN DEFAULT false,
-    is_published BOOLEAN DEFAULT false,
-    views INTEGER DEFAULT 0,
-    published_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  excerpt TEXT,
+  excerpt_bullets TEXT[],
+  content TEXT NOT NULL,
+  cover_image TEXT,
+  category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  author TEXT NOT NULL,
+  is_featured BOOLEAN DEFAULT false,
+  is_published BOOLEAN DEFAULT false,
+  is_urgent BOOLEAN DEFAULT false,
+  is_live BOOLEAN DEFAULT false,
+  is_exclusive BOOLEAN DEFAULT false,
+  trending BOOLEAN DEFAULT false,
+  views INTEGER DEFAULT 0,
+  published_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Campos de Áudio
+  audio_summary_url TEXT,
+  audio_summary_duration INTEGER,
+  audio_summary_size_bytes INTEGER,
+  audio_full_url TEXT,
+  audio_full_duration INTEGER,
+  audio_full_size_bytes INTEGER,
+  audio_generated_at TIMESTAMPTZ,
+  -- Campos de Contexto
+  historical_context TEXT,
+  verified_sources JSONB,
+  tags TEXT[]
 );
 
--- ================================================
--- INDEXES
--- ================================================
+-- Índices para articles
 CREATE INDEX IF NOT EXISTS idx_articles_category ON articles (category_id);
 
 CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles (slug);
@@ -53,11 +69,125 @@ CREATE INDEX IF NOT EXISTS idx_articles_published ON articles (
 
 CREATE INDEX IF NOT EXISTS idx_articles_featured ON articles (is_featured);
 
-CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories (slug);
+CREATE INDEX IF NOT EXISTS idx_articles_with_audio ON articles (audio_summary_url)
+WHERE
+    audio_summary_url IS NOT NULL;
 
--- ================================================
--- FUNCTION: Increment Views
--- ================================================
+-- ============================================
+-- TABELA: read_later (Ler Depois)
+-- ============================================
+CREATE TABLE IF NOT EXISTS read_later (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    user_id UUID NOT NULL,
+    article_id UUID REFERENCES articles (id) ON DELETE CASCADE,
+    is_read BOOLEAN DEFAULT false,
+    reading_progress DECIMAL(3, 2) DEFAULT 0 CHECK (
+        reading_progress BETWEEN 0 AND 1
+    ),
+    added_at TIMESTAMPTZ DEFAULT NOW(),
+    read_at TIMESTAMPTZ,
+    UNIQUE (user_id, article_id)
+);
+
+-- Índices para read_later
+CREATE INDEX IF NOT EXISTS idx_read_later_user ON read_later (user_id, is_read);
+
+CREATE INDEX IF NOT EXISTS idx_read_later_article ON read_later (article_id);
+
+CREATE INDEX IF NOT EXISTS idx_read_later_date ON read_later (added_at DESC);
+
+-- ============================================
+-- TABELA: listen_later (Ouvir Depois)
+-- ============================================
+CREATE TABLE IF NOT EXISTS listen_later (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    user_id UUID NOT NULL,
+    article_id UUID REFERENCES articles (id) ON DELETE CASCADE,
+    audio_version TEXT CHECK (
+        audio_version IN ('summary', 'full')
+    ),
+    queue_order INTEGER NOT NULL,
+    is_played BOOLEAN DEFAULT false,
+    progress_seconds INTEGER DEFAULT 0,
+    playback_speed DECIMAL(2, 1) DEFAULT 1.0 CHECK (
+        playback_speed IN (1.0, 1.5, 2.0, 2.5, 3.0)
+    ),
+    added_at TIMESTAMPTZ DEFAULT NOW(),
+    played_at TIMESTAMPTZ,
+    UNIQUE (
+        user_id,
+        article_id,
+        audio_version
+    )
+);
+
+-- Índices para listen_later
+CREATE INDEX IF NOT EXISTS idx_listen_later_user_order ON listen_later (user_id, queue_order);
+
+CREATE INDEX IF NOT EXISTS idx_listen_later_played ON listen_later (is_played);
+
+-- ============================================
+-- FUNCTIONS
+-- ============================================
+
+-- Function: Auto-incrementar ordem na playlist de áudio
+CREATE OR REPLACE FUNCTION auto_queue_order()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.queue_order IS NULL THEN
+    SELECT COALESCE(MAX(queue_order), 0) + 1
+    INTO NEW.queue_order
+    FROM listen_later
+    WHERE user_id = NEW.user_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para auto-ordem
+DROP TRIGGER IF EXISTS listen_later_order_trigger ON listen_later;
+
+CREATE TRIGGER listen_later_order_trigger
+BEFORE INSERT ON listen_later
+FOR EACH ROW EXECUTE FUNCTION auto_queue_order();
+
+-- Function: Atualizar timestamp quando marcar como lido
+CREATE OR REPLACE FUNCTION update_read_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.is_read = true AND OLD.is_read = false THEN
+    NEW.read_at = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para read_later
+DROP TRIGGER IF EXISTS read_later_timestamp_trigger ON read_later;
+
+CREATE TRIGGER read_later_timestamp_trigger
+BEFORE UPDATE ON read_later
+FOR EACH ROW EXECUTE FUNCTION update_read_timestamp();
+
+-- Function: Atualizar timestamp quando marcar como ouvido
+CREATE OR REPLACE FUNCTION update_played_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.is_played = true AND OLD.is_played = false THEN
+    NEW.played_at = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para listen_later
+DROP TRIGGER IF EXISTS listen_later_timestamp_trigger ON listen_later;
+
+CREATE TRIGGER listen_later_timestamp_trigger
+BEFORE UPDATE ON listen_later
+FOR EACH ROW EXECUTE FUNCTION update_played_timestamp();
+
+-- Function: Incrementar views
 CREATE OR REPLACE FUNCTION increment_views(article_id UUID)
 RETURNS void AS $$
 BEGIN
@@ -67,9 +197,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ================================================
--- FUNCTION: Update updated_at
--- ================================================
+-- Function: Atualizar updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -78,52 +206,62 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ================================================
--- TRIGGERS
--- ================================================
+-- Trigger para articles
 DROP TRIGGER IF EXISTS update_articles_updated_at ON articles;
 
 CREATE TRIGGER update_articles_updated_at
-  BEFORE UPDATE ON articles
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+BEFORE UPDATE ON articles
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
+-- ============================================
+-- ROW LEVEL SECURITY (RLS)
+-- ============================================
 
-CREATE TRIGGER update_categories_updated_at
-  BEFORE UPDATE ON categories
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- ================================================
--- ROW LEVEL SECURITY
--- ================================================
+-- Ativar RLS
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
 
--- Public read access for categories
+ALTER TABLE read_later ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE listen_later ENABLE ROW LEVEL SECURITY;
+
+-- Policies para categories (público para leitura)
 DROP POLICY IF EXISTS "Public can read categories" ON categories;
 
 CREATE POLICY "Public can read categories" ON categories FOR
 SELECT USING (true);
 
--- Public read access for published articles
+-- Policies para articles (público para leitura de publicados)
 DROP POLICY IF EXISTS "Public can read published articles" ON articles;
 
 CREATE POLICY "Public can read published articles" ON articles FOR
 SELECT USING (is_published = true);
 
--- ================================================
--- REALTIME
--- ================================================
+-- Policies para read_later
+DROP POLICY IF EXISTS "Users can manage their read_later" ON read_later;
+
+CREATE POLICY "Users can manage their read_later" ON read_later FOR ALL USING (true);
+
+-- Policies para listen_later
+DROP POLICY IF EXISTS "Users can manage their listen_later" ON listen_later;
+
+CREATE POLICY "Users can manage their listen_later" ON listen_later FOR ALL USING (true);
+
+-- ============================================
+-- REALTIME (Sincronização em tempo real)
+-- ============================================
 ALTER PUBLICATION supabase_realtime ADD TABLE articles;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE categories;
 
--- ================================================
--- SEED DATA: Categories
--- ================================================
+ALTER PUBLICATION supabase_realtime ADD TABLE read_later;
+
+ALTER PUBLICATION supabase_realtime ADD TABLE listen_later;
+
+-- ============================================
+-- SEED DATA: Categorias
+-- ============================================
 INSERT INTO
     categories (
         name,
@@ -141,150 +279,95 @@ VALUES (
         'Economia',
         'economia',
         'Economia, mercado financeiro e negócios',
-        '#16a34a'
+        '#00AA00'
     ),
     (
         'Tecnologia',
         'tecnologia',
         'Tecnologia, inovação e startups',
-        '#0066CC'
+        '#0066FF'
     ),
     (
         'Entretenimento',
         'entretenimento',
         'Cultura, arte, música e celebridades',
-        '#9333ea'
+        '#FF00FF'
     ),
     (
         'Esportes',
         'esportes',
         'Futebol, olimpíadas e esportes em geral',
-        '#ea580c'
+        '#FFA500'
     ),
     (
         'Brasil',
         'brasil',
         'Notícias do Brasil',
-        '#0891b2'
+        '#009C3B'
     ),
     (
         'Mundo',
         'mundo',
         'Notícias internacionais',
-        '#4f46e5'
+        '#003399'
+    ),
+    (
+        'Saúde',
+        'saude',
+        'Saúde, medicina e bem-estar',
+        '#00CED1'
     ) ON CONFLICT (slug) DO NOTHING;
 
--- ================================================
--- SEED DATA: Sample Articles
--- ================================================
-INSERT INTO
-    articles (
-        title,
-        slug,
-        excerpt,
-        content,
-        cover_image,
-        category_id,
-        author,
-        is_featured,
-        is_published,
-        views,
-        published_at
-    )
-SELECT 'Governo anuncia novo pacote de medidas econômicas para 2026', 'governo-anuncia-novo-pacote-medidas-economicas', 'As novas medidas visam estimular o crescimento econômico e reduzir a inflação nos próximos meses.', '<p>O governo federal anunciou nesta terça-feira um amplo pacote de medidas econômicas...</p>', 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=1200', (
-        SELECT id
-        FROM categories
-        WHERE
-            slug = 'politica'
-    ), 'João Silva', true, true, 12345, NOW()
-WHERE
-    NOT EXISTS (
-        SELECT 1
-        FROM articles
-        WHERE
-            slug = 'governo-anuncia-novo-pacote-medidas-economicas'
-    );
+-- ============================================
+-- SEED DATA: Artigo de Exemplo com Áudio
+-- ============================================
+INSERT INTO articles (
+  title,
+  slug,
+  excerpt,
+  excerpt_bullets,
+  content,
+  category_id,
+  cover_image,
+  author,
+  is_featured,
+  is_published,
+  views,
+  published_at,
+  audio_summary_url,
+  audio_summary_duration,
+  audio_full_url,
+  audio_full_duration,
+  historical_context,
+  verified_sources,
+  tags
+) VALUES (
+  'Governo anuncia pacote econômico de R$ 50 bilhões para 2026',
+  'governo-anuncia-pacote-economico-2026',
+  'Medidas visam estimular crescimento e reduzir inflação, beneficiando milhões de brasileiros',
+  ARRAY[
+    'Investimento de R$ 50 bi em infraestrutura',
+    'Redução de impostos para setores estratégicos',
+    'Previsão de criar 200 mil empregos em 2026'
+  ],
+  '<p>O governo federal anunciou hoje um amplo pacote de medidas econômicas...</p><h2>Principais medidas</h2><p>Entre os destaques estão investimentos em infraestrutura e redução tributária.</p>',
+  (SELECT id FROM categories WHERE slug = 'economia' LIMIT 1),
+  'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=1200',
+  'João Silva',
+  true,
+  true,
+  12345,
+  NOW(),
+  'https://example.com/audio-resumo.mp3',
+  120,
+  'https://example.com/audio-completo.mp3',
+  420,
+  'O Brasil vem enfrentando desafios econômicos desde 2020. Este novo pacote representa a terceira tentativa do governo de estimular a economia.',
+  '[{"name": "Ministério da Economia", "url": "https://economia.gov.br"}, {"name": "Banco Central", "url": "https://bcb.gov.br"}]',
+  ARRAY['economia', 'governo', 'investimentos', 'empregos']
+) ON CONFLICT (slug) DO NOTHING;
 
-INSERT INTO
-    articles (
-        title,
-        slug,
-        excerpt,
-        content,
-        cover_image,
-        category_id,
-        author,
-        is_featured,
-        is_published,
-        views,
-        published_at
-    )
-SELECT 'Bolsa de valores atinge recorde histórico com otimismo do mercado', 'bolsa-valores-recorde-historico', 'Ibovespa ultrapassou os 150 mil pontos pela primeira vez na história.', '<p>O mercado financeiro brasileiro celebrou um momento histórico...</p>', 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200', (
-        SELECT id
-        FROM categories
-        WHERE
-            slug = 'economia'
-    ), 'Maria Santos', false, true, 8920, NOW() - INTERVAL '2 hours'
-WHERE
-    NOT EXISTS (
-        SELECT 1
-        FROM articles
-        WHERE
-            slug = 'bolsa-valores-recorde-historico'
-    );
-
-INSERT INTO
-    articles (
-        title,
-        slug,
-        excerpt,
-        content,
-        cover_image,
-        category_id,
-        author,
-        is_featured,
-        is_published,
-        views,
-        published_at
-    )
-SELECT 'Nova inteligência artificial brasileira promete revolucionar o mercado', 'nova-ia-brasileira-revolucionar-mercado', 'Startup nacional lança modelo de IA que compete com gigantes internacionais.', '<p>Uma startup brasileira surpreendeu o mercado de tecnologia...</p>', 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200', (
-        SELECT id
-        FROM categories
-        WHERE
-            slug = 'tecnologia'
-    ), 'Pedro Costa', false, true, 7650, NOW() - INTERVAL '4 hours'
-WHERE
-    NOT EXISTS (
-        SELECT 1
-        FROM articles
-        WHERE
-            slug = 'nova-ia-brasileira-revolucionar-mercado'
-    );
-
-INSERT INTO
-    articles (
-        title,
-        slug,
-        excerpt,
-        content,
-        cover_image,
-        category_id,
-        author,
-        is_featured,
-        is_published,
-        views,
-        published_at
-    )
-SELECT 'Brasil vence Argentina em clássico emocionante pelas Eliminatórias', 'brasil-vence-argentina-eliminatorias', 'Seleção brasileira garantiu vitória por 2x1 em jogo disputado no Maracanã.', '<p>Em uma partida eletrizante no Maracanã, a Seleção Brasileira...</p>', 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200', (
-        SELECT id
-        FROM categories
-        WHERE
-            slug = 'esportes'
-    ), 'Carlos Oliveira', false, true, 15678, NOW() - INTERVAL '6 hours'
-WHERE
-    NOT EXISTS (
-        SELECT 1
-        FROM articles
-        WHERE
-            slug = 'brasil-vence-argentina-eliminatorias'
-    );
+-- ============================================
+-- FINALIZADO
+-- ============================================
+SELECT 'Schema Dual Playlist System criado com sucesso!' AS status;

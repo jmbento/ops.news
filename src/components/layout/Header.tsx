@@ -1,13 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, Search, Moon, Sun, X } from 'lucide-react'
+import { Menu, Search, Moon, Sun, X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Separator } from '@/components/ui/separator'
+import { PlaylistButtons } from './PlaylistButtons'
 import { categories, COLORS } from '@/lib/constants'
 
 export function Header() {
@@ -15,7 +18,6 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const { theme, setTheme } = useTheme()
 
-  // Detectar scroll para mudar estilo do header
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50)
@@ -33,40 +35,108 @@ export function Header() {
       }`}
     >
       <div className="container mx-auto px-4">
-        {/* Main Header */}
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 group">
-            <motion.span
-              className="text-2xl md:text-3xl font-black tracking-tight"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: 'spring', stiffness: 400 }}
-            >
-              <span style={{ color: COLORS.primary.red }}>OPS</span>
-              <span className="text-foreground">.NEWS</span>
-            </motion.span>
-          </Link>
+        <div className="flex h-16 items-center justify-between gap-4">
+          {/* Menu Hamburger */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Menu">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[320px] sm:w-[400px] p-0">
+              <SheetHeader className="p-6 pb-4">
+                <SheetTitle className="flex items-center gap-2">
+                  <Link href="/" className="flex items-center">
+                    <span className="text-2xl font-black tracking-tight">
+                      <span style={{ color: COLORS.primary.red }}>OPS</span>
+                      <span className="text-foreground">.NEWS</span>
+                    </span>
+                  </Link>
+                </SheetTitle>
+              </SheetHeader>
+              
+              <Separator />
+              
+              <div className="flex flex-col p-6">
+                <form action="/busca" method="GET" className="mb-6">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input name="q" placeholder="Buscar notícias..." className="pl-10" />
+                  </div>
+                </form>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center">
-            {categories.map((category) => (
-              <Link
-                key={category.slug}
-                href={`/${category.slug}`}
-                className="relative px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
-              >
-                {category.name}
-                {/* Underline animado na cor da categoria */}
-                <span
-                  className="absolute bottom-0 left-3 right-3 h-0.5 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"
-                  style={{ backgroundColor: category.color }}
-                />
-              </Link>
-            ))}
-          </nav>
+                <nav className="flex flex-col gap-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    Categorias
+                  </p>
+                  {categories.map((category) => (
+                    <Link
+                      key={category.slug}
+                      href={`/${category.slug}`}
+                      className="flex items-center justify-between py-3 px-3 -mx-3 rounded-lg text-foreground hover:bg-muted transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                        <span className="font-medium">{category.name}</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+                  ))}
+                </nav>
+
+                <Separator className="my-6" />
+
+                <nav className="flex flex-col gap-1">
+                  <Link href="/sobre" className="py-3 px-3 -mx-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                    Sobre
+                  </Link>
+                  <Link href="/contato" className="py-3 px-3 -mx-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                    Contato
+                  </Link>
+                </nav>
+
+                <Separator className="my-6" />
+
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-muted-foreground">Tema</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={theme === 'light' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('light')}
+                    >
+                      <Sun className="h-4 w-4 mr-1" />
+                      Claro
+                    </Button>
+                    <Button
+                      variant={theme === 'dark' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('dark')}
+                    >
+                      <Moon className="h-4 w-4 mr-1" />
+                      Escuro
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Logo Central */}
+          <Link href="/" className="flex items-center justify-center flex-1">
+            <motion.div whileHover={{ scale: 1.02 }} transition={{ type: 'spring', stiffness: 400 }}>
+              <span className="text-2xl md:text-3xl font-black tracking-tight">
+                <span style={{ color: COLORS.primary.red }}>OPS</span>
+                <span className="text-foreground">.NEWS</span>
+              </span>
+            </motion.div>
+          </Link>
 
           {/* Actions */}
           <div className="flex items-center gap-1">
+            {/* Playlist Buttons */}
+            <PlaylistButtons />
+
             {/* Search Toggle */}
             <Button
               variant="ghost"
@@ -74,78 +144,20 @@ export function Header() {
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               aria-label="Buscar"
             >
-              {isSearchOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Search className="h-5 w-5" />
-              )}
+              {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
             </Button>
 
-            {/* Theme Toggle */}
+            {/* Theme Toggle (desktop) */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               aria-label="Alternar tema"
+              className="hidden md:flex"
             >
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             </Button>
-
-            {/* Mobile Menu */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Menu">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <div className="flex flex-col gap-6 mt-8">
-                  {/* Mobile Search */}
-                  <form action="/busca" method="GET">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        name="q"
-                        placeholder="Buscar notícias..."
-                        className="pl-10"
-                      />
-                    </div>
-                  </form>
-
-                  <div className="h-px bg-border" />
-
-                  {/* Mobile Categories */}
-                  <nav className="flex flex-col gap-2">
-                    {categories.map((category) => (
-                      <Link
-                        key={category.slug}
-                        href={`/${category.slug}`}
-                        className="flex items-center gap-3 text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                      >
-                        <span
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: category.color }}
-                        />
-                        {category.name}
-                      </Link>
-                    ))}
-                  </nav>
-
-                  <div className="h-px bg-border" />
-
-                  {/* Mobile Links */}
-                  <div className="flex flex-col gap-2">
-                    <Link href="/sobre" className="text-muted-foreground hover:text-foreground py-2">
-                      Sobre
-                    </Link>
-                    <Link href="/contato" className="text-muted-foreground hover:text-foreground py-2">
-                      Contato
-                    </Link>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
 

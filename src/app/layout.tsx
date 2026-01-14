@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Roboto } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
@@ -108,8 +109,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <GoogleAnalytics />
+          <Toaster position="bottom-right" richColors />
           
-          {/* Breaking News Bar */}
           <BreakingNewsBar />
           
           <div className="relative min-h-screen flex flex-col pt-10">
